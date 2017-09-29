@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="Shift_JIS">
+    <link type="text/css" rel="stylesheet" href="bootstrap.min.css">
+    <script type="text/javascript" src="../chess_frame.js"></script>
+    <script type="text/javascript">
+        var chessFrame;
+
+        function onLoad() {
+            chessFrame = new ChessFrame();
+            chessFrame.initialize( [ "e4", "e5" ] );
+        }
+    </script>
+</head>
+<body onload="onLoad();">
+    <table>
+        <tbody>
+            <tr>
+                <td>
+                    <div>
+                        <canvas id="backCanvas" width="450" height="450"></canvas>
+                        <canvas id="frontCanvas" width="450" height="450"></canvas>
+                    </div>
+                </td>
+                <td style="vertical-align:top;">
+                    <div>
+                        <button id="prevButton" class="btn btn-default" onclick="chessFrame.goPrev();">Prev</button>
+                        <button id="nextButton" class="btn btn-default" onclick="chessFrame.goNext();">Next</button><br>
+                        <br>
+                        <textarea id="movesDisplay" style="width:200px; height:350px;" readonly></textarea>
+                    </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</body>
+</html>
