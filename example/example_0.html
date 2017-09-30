@@ -9,7 +9,7 @@
 
         function onLoad() {
             chessFrame = new ChessFrame();
-            chessFrame.initialize( [ "e4", "e5" ] );
+            chessFrame.initialize( [ "e4", "e5", "Nf3", "Nc6", "Bc4", "Nf6", "Ng5", "d5" ] );
         }
     </script>
 </head>
@@ -28,7 +28,7 @@
                         <button id="prevButton" class="btn btn-default" onclick="chessFrame.goPrev();">Prev</button>
                         <button id="nextButton" class="btn btn-default" onclick="chessFrame.goNext();">Next</button><br>
                         <br>
-                        <textarea id="movesDisplay" style="width:200px; height:350px;" readonly></textarea>
+                        <textarea id="movesDisplay" style="width:120px; height:350px;" readonly></textarea>
                     </div>
                 </td>
             </tr>

@@ -1,4 +1,19 @@
 // chess_frame.js
+
+/*
+    Classes
+        > Size
+        > PieceState
+        > PieceStateSet
+        > MoveInfo
+        > MoveParser
+        > ChessFrame
+        > Renderer
+ */
+
+//=============================================================================================================
+// Size
+//=============================================================================================================
 var Size = (function () {
     function Size( width, height ) {
         this.width = width;
@@ -8,6 +23,9 @@ var Size = (function () {
     return Size;
 })();
 
+//=============================================================================================================
+// PieceState
+//=============================================================================================================
 var PieceState = (function () {
     function PieceState( x, y, alives ) {
         this.x = x;
@@ -18,6 +36,9 @@ var PieceState = (function () {
     return PieceState;
 })();
 
+//=============================================================================================================
+// PieceStateSet
+//=============================================================================================================
 var PieceStateSet = (function () {
     function PieceStateSet() {
         this.states = [];
@@ -29,6 +50,7 @@ var PieceStateSet = (function () {
             "bk", "bq", "br1", "br2", "bb1", "bb2", "bn1", "bn2",
             "bp1", "bp2", "bp3", "bp4", "bp5", "bp6", "bp7", "bp8"
         ];
+        this.moveParser = new MoveParser();
     }
 
     PieceStateSet.prototype.initialize = function () {
@@ -76,29 +98,190 @@ var PieceStateSet = (function () {
             states["bp" + (i + 1).toString()] = new PieceState( files[ i ], 7, true );
     }
 
+    // TODO: 実装 (キャスリングなど)
     PieceStateSet.prototype.update = function ( moves ) {
         this.initialize();
         for (var i = 0; i < moves.length; ++i) {
-            var move = moves[ i ];
-            alert( move );
+            var isWhiteMove = i % 2 == 0;
+            var moveInfo = this.moveParser.Parse( this, moves[ i ], isWhiteMove );
+            if (!moveInfo.isQueenSideCastling && !moveInfo.isKingSideCastling) {
+                if (!moveInfo.isCaughtPiece) {
+                    this.states[ moveInfo.key ].x = moveInfo.movedX;
+                    this.states[ moveInfo.key ].y = moveInfo.movedY;
+                } else {
+                    //...
+                }
+            } else if (moveInfo.isQueenSideCastling) {
+                //...
+            } else if (moveInfo.isKingSideCastling) {
+                //...
+            }
         }
-        //this.states["wp5"].y = 3;
     }
+
+    // TODO: 実装 (Rook, Queen, King など)
+    // 検索 (複数ある駒用 (Pawn, Rook, Night, Bishop))
+    PieceStateSet.prototype.findKey = function ( isWhitePiece, pieceType, file, rank ) {
+        var keyPrefix = (isWhitePiece ? "w" : "b") + pieceType;
+        for (var i = 0; i < this.keys.length; ++i) {
+            var key = this.keys[ i ];
+            if (key.substring( 0, 2 ) == keyPrefix) {
+                var state = this.states[ key ];
+                // 指定fileの指定rankに移動可能か？
+                if (pieceType == "p") {
+                    if (isPawnMovableTo( state, file, rank ))
+                        return key;
+                } else if (pieceType == "n") {
+                    if (isKnightMovableTo( state, file, rank ))
+                        return key;
+                } else if (pieceType == "b") {
+                    if (isBishopMovableTo( state, file, rank ))
+                         return key;
+                }
+                //...
+            }
+        }
+        return null;
+    }
+
+    // TODO: 同一 file に2つ以上の駒がある場合
+    function isPawnMovableTo( state, file, rank ) {
+        if (state.x == file)
+            return true;
+        return false;
+    }
+
+    // TODO: 実装
+    function isKnightMovableTo( state, file, rank ) {
+    }
+
+    // TODO: 実装
+    function isBishopMovableTo( state, file, rank ) {
+    }
+
+    // TODO: 実装 (Rook, Queen, King など)
 
     return PieceStateSet;
 })();
 
+//=============================================================================================================
+// MoveInfo
+//=============================================================================================================
+var MoveInfo = (function () {
+    function MoveInfo() {
+        this.isWhiteMove = false;
+        this.isPawnMove = false;
+        this.isKnightMove = false;
+        this.isBishopMove = false;
+        this.isRookMove = false;
+        this.isQueenMove = false;
+        this.isKingMove = false;
+        this.indexPiece = 0;
+        this.isQueenSideCastling = false;
+        this.isKingSideCastling = false;
+        this.isCaughtPiece = false;
+        this.key = "";
+        this.movedX = 0;
+        this.movedY = 0;
+    }
+
+    return MoveInfo;
+})();
+
+//=============================================================================================================
+// MoveParser
+//=============================================================================================================
+var MoveParser = (function () {
+    function MoveParser() {
+    }
+
+    MoveParser.prototype.Parse = function ( pieceStates, move, isWhiteMove ) {
+        var moveInfo = new MoveInfo();
+        moveInfo.isWhiteMove = isWhiteMove;
+
+        // TODO: 実装 (Rook, Queen, King など)
+        // 1文字目でどのタイプの駒を動かしたかが分る
+        if (isFile( move[ 0 ] ))
+            ParsePawn( pieceStates, move, isWhiteMove, moveInfo );
+        else if (move[ 0 ] == "N")
+            ParseKnight( pieceStates, move, isWhiteMove, moveInfo );
+        else if (move[ 0 ] == "B")
+            ParseBishop( pieceStates, move, isWhiteMove, moveInfo );
+        //...
+
+        return moveInfo;
+    }
+
+    // TODO: 実装 (駒取り)
+    function ParsePawn( pieceStates, move, isWhiteMove, moveInfo ) {
+        moveInfo.isPawnMove = true;
+        if (move.length == 2) {
+            if (!isRank( move[ 1 ] )) {
+                alert( move[ 1 ] + " がRankではありません" );
+                return;
+            }
+            // 駒取りなしのポーンの移動
+            // どのポーンの移動かを特定
+            moveInfo.key = pieceStates.findKey( isWhiteMove, "p", move[ 0 ], move[ 1 ] );
+            moveInfo.movedX = move[ 0 ];
+            moveInfo.movedY = move[ 1 ];
+        } else {
+            // 駒取りありのポーンの移動
+            //...
+        }
+    }
+
+    // TODO: 実装 (駒取り)
+    function ParseKnight( pieceStates, move, isWhiteMove, moveInfo ) {
+        moveInfo.isKnightMove = true;
+        if (move.length == 3) {
+            // 駒取りなしのナイトの移動
+            if (!isFile( move[ 1 ] )) {
+                alert( move[ 1 ] + " がFileではありません" );
+                return;
+            }
+            if (!isRank( move[ 2 ] )) {
+                alert( move[ 2 ] + " がRankではありません" );
+                return;
+            }
+            moveInfo.key = pieceStates.findKey( isWhiteMove, "n", move[ 1 ], move[ 2 ] );
+            moveInfo.movedX = move[ 1 ];
+            moveInfo.movedY = move[ 2 ];
+        } else {
+            // 駒取りありのナイトの移動
+            //...
+        }
+    }
+
+    // TODO: 実装
+    function ParseBishop( pieceStates, move, isWhiteMove, moveInfo ) {
+        moveInfo.isBishopMove = true;
+        //...
+    }
+
+    function isFile( file ) {
+        return file == "a" || file == "b" || file == "c" || file == "d" ||
+            file == "e" || file == "f" || file == "g" || file == "h";
+    }
+
+    function isRank( rank ) {
+        return 1 <= rank && rank <= 8;
+    }
+
+    return MoveParser;
+})();
+
+//=============================================================================================================
+// ChessFrame
+//=============================================================================================================
 var ChessFrame = (function () {
     function ChessFrame() {
         this.contexts = {
             back: document.getElementById( "backCanvas" ).getContext( "2d" ),
             front: document.getElementById( "frontCanvas" ).getContext( "2d" )
         };
-        this.pieceSize = new Size( 45, 45 );
-        this.boardSize = new Size( 360, 360 );
-        this.offsetDrawing = this.pieceSize;
-        this.files = [ "a", "b", "c", "d", "e", "f", "g", "h" ];
         this.pieceStates = new PieceStateSet();
+        this.renderer = new Renderer( this.contexts );
         this.moves = [];
         this.countSteps = -1;
     }
@@ -109,7 +292,7 @@ var ChessFrame = (function () {
         this.initializeEventHandlers();
         this.moves = moves;
         this.updateButtonStates();
-        this.render();
+        this.renderer.render( this.pieceStates );
     }
 
     ChessFrame.prototype.initializeEventHandlers = function () {
@@ -130,7 +313,7 @@ var ChessFrame = (function () {
             return;
         --this.countSteps;
         this.update();
-        this.render();
+        this.renderer.render( this.pieceStates );
     }
 
     ChessFrame.prototype.goNext = function () {
@@ -138,23 +321,7 @@ var ChessFrame = (function () {
             return;
         ++this.countSteps;
         this.update();
-        this.render();
-    }
-
-    ChessFrame.prototype.updateMovesDisplay = function () {
-        var movesDisplay = "";
-        for (var i = 0; i <= this.countSteps; ++i) {
-            if (i == 0)
-                movesDisplay = this.moves[ i ];
-            else
-                movesDisplay += "\r\n" + this.moves[ i ];
-        }
-        document.getElementById( "movesDisplay" ).value = movesDisplay;
-    }
-
-    ChessFrame.prototype.updateButtonStates = function () {
-        document.getElementById( "prevButton" ).disabled = this.countSteps <= -1;
-        document.getElementById( "nextButton" ).disabled = this.moves.length - 1 <= this.countSteps;
+        this.renderer.render( this.pieceStates );
     }
 
     ChessFrame.prototype.update = function () {
@@ -168,43 +335,76 @@ var ChessFrame = (function () {
         this.pieceStates.update( partialMoves );
     }
 
+    ChessFrame.prototype.updateMovesDisplay = function () {
+        var movesDisplay = "";
+        var countTurns = 1;
+        for (var i = 0; i <= this.countSteps; ++i) {
+            if (i == 0)
+                movesDisplay = countTurns.toString() + ": " + this.moves[ i ];
+            else if (i % 2 == 0) {
+                ++countTurns;
+                movesDisplay += "\r\n" + countTurns.toString() + ": " + this.moves[ i ];
+            } else
+                movesDisplay += "  " + this.moves[ i ];
+        }
+        document.getElementById( "movesDisplay" ).value = movesDisplay;
+    }
+
+    ChessFrame.prototype.updateButtonStates = function () {
+        document.getElementById( "prevButton" ).disabled = this.countSteps <= -1;
+        document.getElementById( "nextButton" ).disabled = this.moves.length - 1 <= this.countSteps;
+    }
+
+    return ChessFrame;
+})();
+
+//=============================================================================================================
+// Renderer
+//=============================================================================================================
+var Renderer = (function () {
+    function Renderer( contexts ) {
+        this.contexts = contexts;
+        this.pieceSize = new Size( 45, 45 );
+        this.boardSize = new Size( 360, 360 );
+        this.offsetDrawing = this.pieceSize;
+        this.files = [ "a", "b", "c", "d", "e", "f", "g", "h" ];
+    }
+
     // 描画更新
-    ChessFrame.prototype.render = function () {
+    Renderer.prototype.render = function ( pieceStates ) {
         this.contexts.back.clearRect( 0, 0, this.contexts.back.canvas.width, this.contexts.back.canvas.height );
 
         // レンダリング結果 (画像は非同期にレンダリング) をフロントバッファに送るためのタイミングの構成用
         window.sessionStorage.setItem( "countImages", "0" );
 
-        this.renderCore( this.contexts );
+        this.renderCore( this.contexts, pieceStates );
     }
 
-    ChessFrame.prototype.renderCore = function ( contexts ) {
-        this.drawPieces( contexts, this.offsetDrawing );
+    Renderer.prototype.renderCore = function ( contexts, pieceStates ) {
+        this.drawPieces( contexts, pieceStates, this.offsetDrawing );
         this.drawChessBoard( contexts.back, this.offsetDrawing );
-        this.drawPositionalNotation( contexts.back, new Size( 0, 0 ) );
+        this.drawPositionalNotations( contexts.back, new Size( 0, 0 ) );
     }
 
-    ChessFrame.prototype.getX = function ( x ) {
+    Renderer.prototype.getX = function ( x ) {
         return this.files.indexOf( x );
     }
 
-    ChessFrame.prototype.getY = function ( y ) {
+    Renderer.prototype.getY = function ( y ) {
         return 8 - y;  // 0 -> 8, 7 -> 1
     }
 
-    ChessFrame.prototype.drawPieces = function ( contexts, offset ) {
-        for (var i = 0; i < this.pieceStates.keys.length; ++i) {
-            var key = this.pieceStates.keys[ i ];
-            var state = this.pieceStates.states[ key ];
+    Renderer.prototype.drawPieces = function ( contexts, pieceStates, offset ) {
+        for (var i = 0; i < pieceStates.keys.length; ++i) {
+            var key = pieceStates.keys[ i ];
+            var state = pieceStates.states[ key ];
             // html 直下に figures フォルダを配置する
-            this.drawImage( contexts, "figures/" + key.substring( 0, 2 ) + ".png", state, offset );
+            this.drawImage( contexts, pieceStates.keys.length, "figures/" + key.substring( 0, 2 ) + ".png", state, offset );
         }
     }
 
-    ChessFrame.prototype.drawImage = function ( contexts, sourcePath, state, offset ) {
+    Renderer.prototype.drawImage = function ( contexts, pieceKeysLength, sourcePath, state, offset ) {
         var size = this.pieceSize;
-        var pieceStates = this.pieceStates;
-
         var x = this.getX( state.x );
         var y = this.getY( state.y );
         var alives = state.alives;
@@ -218,7 +418,7 @@ var ChessFrame = (function () {
 
             var countImages = Number( window.sessionStorage.getItem( "countImages" ) );
             window.sessionStorage.setItem( "countImages", countImages + 1 );
-            if (countImages + 1 == pieceStates.keys.length) {
+            if (countImages + 1 == pieceKeysLength) {
                 // 全ての画像の描画が完了 → バックバッファの内容をフロントバッファに転送
                 // (ダブルバッファリング (http://d.hatena.ne.jp/hypercrab/20111014/1318558535))
                 var imageData = contexts.back.getImageData( 0, 0, contexts.back.canvas.width, contexts.back.canvas.height );
@@ -227,7 +427,7 @@ var ChessFrame = (function () {
         }
     }
 
-    ChessFrame.prototype.drawPositionalNotation = function ( context, offset ) {
+    Renderer.prototype.drawPositionalNotations = function ( context, offset ) {
         var fileMargin = new Size( 18, 30 );
         var rankMargin = new Size( 20, 30 );
 
@@ -247,7 +447,7 @@ var ChessFrame = (function () {
         }
     }
 
-    ChessFrame.prototype.drawChessBoard = function ( context, offset ) {
+    Renderer.prototype.drawChessBoard = function ( context, offset ) {
         context.beginPath();
 
         context.moveTo( offset.width, offset.height );
@@ -285,5 +485,5 @@ var ChessFrame = (function () {
         context.stroke();
     }
 
-    return ChessFrame;
+    return Renderer;
 })();
