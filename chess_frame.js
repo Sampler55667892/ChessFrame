@@ -207,6 +207,7 @@ var MoveParser = (function () {
         ParseBase( pieceStates, move, isWhiteMove, moveInfo, "b" );
     }
 
+    // TODO: 指定位置に移動可能なルークが2つある場合
     function ParseRook( pieceStates, move, isWhiteMove, moveInfo ) {
         moveInfo.isRookMove = true;
         ParseBase( pieceStates, move, isWhiteMove, moveInfo, "r" );
