@@ -1,5 +1,4 @@
 // chess_frame.js
-//     depends chess_position_utility.js
 
 /*
     Classes
@@ -396,25 +395,18 @@ var PieceStateSet = (function () {
             }
             if (key.substring( 0, 2 ) == keyPrefix) {
                 // éwíËfileÇÃéwíËrankÇ…à⁄ìÆâ¬î\Ç©ÅH
-                if (pieceType == "p") {
-                    if (this.isPawnMovableTo( postX, postY, prevX, prevY, searchOption ))
-                        return key;
-                } else if (pieceType == "n") {
-                    if (this.isKnightMovableTo( postX, postY, prevX, prevY ))
-                        return key;
-                } else if (pieceType == "b") {
-                    if (this.isBishopMovableTo( postX, postY, prevX, prevY ))
-                        return key;
-                } else if (pieceType == "r") {
-                    if (this.isRookMovableTo( postX, postY, prevX, prevY ))
-                        return key;
-                } else if (pieceType == "q") {
-                    if (this.isQueenMovableTo( postX, postY, prevX, prevY ))
-                        return key;
-                } else if (pieceType == "k") {
-                    if (this.isKingMovableTo( postX, postY, prevX, prevY ))
-                        return key;
-                }
+                if (pieceType == "p" && this.isPawnMovableTo( postX, postY, prevX, prevY, searchOption ))
+                    return key;
+                else if (pieceType == "n" && this.isKnightMovableTo( postX, postY, prevX, prevY ))
+                    return key;
+                else if (pieceType == "b" && this.isBishopMovableTo( postX, postY, prevX, prevY ))
+                    return key;
+                else if (pieceType == "r" && this.isRookMovableTo( postX, postY, prevX, prevY ))
+                    return key;
+                else if (pieceType == "q" && this.isQueenMovableTo( postX, postY, prevX, prevY ))
+                    return key;
+                else if (pieceType == "k" && this.isKingMovableTo( postX, postY, prevX, prevY ))
+                    return key;
             }
         }
         return null;
@@ -467,14 +459,10 @@ var PieceStateSet = (function () {
     // äeÉrÉVÉáÉbÉvÇÃà⁄ìÆîÕàÕÇÕèdï°ÇµÇ»Ç¢
     PieceStateSet.prototype.isBishopMovableTo = function ( postX, postY, prevX, prevY ) {
         var vectors = [
-            // ñkìå
-            new Vector( 1, 1 ),
-            // ñkêº
-            new Vector( -1, 1 ),
-            // ìÏêº
-            new Vector( 1, -1 ),
-            // ìÏìå
-            new Vector( -1, -1 )
+            new Vector( 1, 1 ), // ñkìå
+            new Vector( -1, 1 ), // ñkêº
+            new Vector( 1, -1 ), // ìÏêº
+            new Vector( -1, -1 ) // ìÏìå
         ];
 
         for (var i = 0; i < vectors.length; ++i) {
@@ -490,14 +478,10 @@ var PieceStateSet = (function () {
 
     PieceStateSet.prototype.isRookMovableTo = function ( postX, postY, prevX, prevY ) {
         var vectors = [
-            // ìå
-            new Vector( 1, 0 ),
-            // ñk
-            new Vector( 0, 1 ),
-            // êº
-            new Vector( -1, 0 ),
-            // ìÏ
-            new Vector( 0, -1 )
+            new Vector( 1, 0 ), // ìå
+            new Vector( 0, 1 ), // ñk
+            new Vector( -1, 0 ), // êº
+            new Vector( 0, -1 ) // ìÏ
         ];
 
         for (var i = 0; i < vectors.length; ++i) {
@@ -513,22 +497,14 @@ var PieceStateSet = (function () {
 
     PieceStateSet.prototype.isQueenMovableTo = function ( postX, postY, prevX, prevY ) {
         var vectors = [
-            // ìå
-            new Vector( 1, 0 ),
-            // ñkìå
-            new Vector( 1, 1 ),
-            // ñk
-            new Vector( 0, 1 ),
-            // ñkêº
-            new Vector( -1, 1 ),
-            // êº
-            new Vector( -1, 0 ),
-            // ìÏêº
-            new Vector( 1, -1 ),
-            // ìÏ
-            new Vector( 0, -1 ),
-            // ìÏìå
-            new Vector( -1, -1 )
+            new Vector( 1, 0 ), // ìå
+            new Vector( 1, 1 ), // ñkìå
+            new Vector( 0, 1 ), // ñk
+            new Vector( -1, 1 ), // ñkêº
+            new Vector( -1, 0 ), // êº
+            new Vector( 1, -1 ), // ìÏêº
+            new Vector( 0, -1 ), // ìÏ
+            new Vector( -1, -1 ) // ìÏìå
         ];
 
         for (var i = 0; i < vectors.length; ++i) {
