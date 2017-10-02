@@ -32,23 +32,17 @@ var ChessFrame = (function () {
     ChessFrame.prototype.initialize = function ( moves ) {
         document.getElementById( "backCanvas" ).style.display = "none";
         this.pieceStates.initialize();
-        this.initializeEventHandlers();
         this.moves = moves;
         this.updateButtonStates();
         this.renderer.render( this.pieceStates );
-    }
 
-    ChessFrame.prototype.initializeEventHandlers = function () {
-        // HTMLCanvasElement >  Element > Node > EventTarget.addEventListener
-        this.contexts.front.canvas.addEventListener( "click", this.onClicked, false );
-    }
-
-    ChessFrame.prototype.onClicked = function (e) {
-        // Canvasの左上を (0, 0) とした相対座標の取得 (https://qiita.com/nekoneko-wanwan/items/9af7fb34d0fb7f9fc870)
-        var rect = e.target.getBoundingClientRect();
-        var x = e.clientX - rect.left;
-        var y = e.clientY - rect.top;
-        //alert( "(x, y) = (" + x + ", " + y + ")" );
+        /*
+        // デバッグ用
+        var count = 34;
+        //var count = 0;
+        for (var i = 0; i < count; ++i)
+            this.goNext();
+        */
     }
 
     ChessFrame.prototype.goPrev = function () {
@@ -120,6 +114,7 @@ var MoveInfo = (function () {
         this.killedPieceKey = "";
         this.postFile = "";
         this.postRank = 0;
+        this.isGameOver = false;
     }
 
     return MoveInfo;
@@ -136,13 +131,15 @@ var MoveParser = (function () {
         var moveInfo = new MoveInfo();
         moveInfo.isWhiteMove = isWhiteMove;
 
-        // チェック記号の除去
+        // "チェック" の除去
         var indexCheck = move.indexOf( "+" );
         if (indexCheck != -1)
             move = move.substring( 0, indexCheck );
+        // "疑問手" の除去
+        var indexQ = move.indexOf( "?" );
+        if (indexQ != -1)
+            move = move.substring( 0, indexQ );
 
-        // TODO: キャスリング，試合終了
-        // 1文字目でどのタイプの駒を動かしたかが分る
         if (isFile( move[ 0 ] ))
             ParsePawn( pieceStates, move, isWhiteMove, moveInfo );
         else if (move[ 0 ] == "N")
@@ -155,6 +152,12 @@ var MoveParser = (function () {
             ParseQueen( pieceStates, move, isWhiteMove, moveInfo );
         else if (move[ 0 ] == "K")
             ParseKing( pieceStates, move, isWhiteMove, moveInfo );
+        else if (move == "0-1" || move == "1-0")
+            moveInfo.isGameOver = true;
+        else if (move == "1/2-1/2")
+            moveInfo.isGameOver = true;
+        else if (move[ 0 ] == "0")
+            ParseCastling( pieceStates, move, isWhiteMove, moveInfo );
 
         return moveInfo;
     }
@@ -195,7 +198,6 @@ var MoveParser = (function () {
         }
     }
 
-    // TODO: 指定位置に移動可能なナイトが2つある場合
     function ParseKnight( pieceStates, move, isWhiteMove, moveInfo ) {
         moveInfo.isKnightMove = true;
         ParseBase( pieceStates, move, isWhiteMove, moveInfo, "n" );
@@ -222,6 +224,13 @@ var MoveParser = (function () {
         ParseBase( pieceStates, move, isWhiteMove, moveInfo, "k" );
     }
 
+    function ParseCastling( pieceStates, move, isWhiteMove, moveInfo ) {
+        if (move == "0-0")
+            moveInfo.isKingSideCastling = true;
+        else if (move == "0-0-0")
+            moveInfo.isQueenSideCastling = true;
+    }
+
     function ParseBase( pieceStates, move, isWhiteMove, moveInfo, pieceType ) {
         if (move.length == 3) {
             // 駒取りなしの駒の移動
@@ -237,26 +246,42 @@ var MoveParser = (function () {
             moveInfo.postRank = move[ 2 ];
             moveInfo.movedPieceKey = pieceStates.findKey( isWhiteMove, pieceType, moveInfo.postFile, moveInfo.postRank );
         } else if (move.length == 4) {
-            // 駒取りありの駒の移動
-            if (move[ 1 ] != "x") {
-                alert( move[ 1 ] + " がxではありません" );
-                return;
+            if (move[ 1 ] == "x") {
+                // 駒取りありの駒の移動
+                if (!isFile( move[ 2 ] )) {
+                    alert( move[ 2 ] + " がFileではありません"  );
+                    return;
+                }
+                if (!isRank( move[ 3 ] )) {
+                    alert( move[ 3 ] + " がRankではありません" );
+                    return;
+                }
+                moveInfo.existsKilledPiece = true;
+                moveInfo.postFile = move[ 2 ];
+                moveInfo.postRank = move[ 3 ];
+                var op1 = new SearchOption( false, true );
+                moveInfo.movedPieceKey = pieceStates.findKey( isWhiteMove, pieceType, moveInfo.postFile, moveInfo.postRank, op1 );
+                var op2 = new SearchOption( true, false );
+                moveInfo.killedPieceKey = pieceStates.findKey( !isWhiteMove, "*", moveInfo.postFile, moveInfo.postRank, op2 );
+            } else {
+                // 同じ場所に移動できる駒が2つある場合 (ナイト or ルーク)
+                if (!isFile( move[ 1 ] )) {
+                    alert( move[ 1 ] + " がFileではありません" );
+                    return;
+                }
+                if (!isFile( move[ 2 ] )) {
+                    alert( move[ 2 ] + " がFileではありません" );
+                    return;
+                }
+                if (!isRank( move[ 3 ] )) {
+                    alert( move[ 3 ] + " がRankではありません" );
+                    return;
+                }
+                var op = new SearchOption( false, false, move[ 1 ] );
+                moveInfo.postFile = move[ 2 ];
+                moveInfo.postRank = move[ 3 ];
+                moveInfo.movedPieceKey = pieceStates.findKey( isWhiteMove, pieceType, moveInfo.postFile, moveInfo.postRank, op );
             }
-            if (!isFile( move[ 2 ] )) {
-                alert( move[ 2 ] + " がFileではありません"  );
-                return;
-            }
-            if (!isRank( move[ 3 ] )) {
-                alert( move[ 3 ] + " がRankではありません" );
-                return;
-            }
-            moveInfo.existsKilledPiece = true;
-            moveInfo.postFile = move[ 2 ];
-            moveInfo.postRank = move[ 3 ];
-            var op1 = new SearchOption( false, true );
-            moveInfo.movedPieceKey = pieceStates.findKey( isWhiteMove, pieceType, moveInfo.postFile, moveInfo.postRank, op1 );
-            var op2 = new SearchOption( true, false );
-            moveInfo.killedPieceKey = pieceStates.findKey( !isWhiteMove, "*", moveInfo.postFile, moveInfo.postRank, op2 );
         }
     }
 
@@ -348,12 +373,15 @@ var PieceStateSet = (function () {
             states["bp" + (i + 1).toString()] = new PieceState( files[ i ], 7, true );
     }
 
-    // TODO: 実装 (キャスリングなど)
     PieceStateSet.prototype.update = function ( moves ) {
         this.initialize();
         for (var i = 0; i < moves.length; ++i) {
             var isWhiteMove = i % 2 == 0;
             var moveInfo = this.moveParser.Parse( this, moves[ i ], isWhiteMove );
+            if (moveInfo.isGameOver) {
+                alert( "Game is over." );
+                return;
+            }
             if (!moveInfo.isQueenSideCastling && !moveInfo.isKingSideCastling) {
                 if (!moveInfo.existsKilledPiece) {
                     this.states[ moveInfo.movedPieceKey ].file = moveInfo.postFile;
@@ -364,9 +392,25 @@ var PieceStateSet = (function () {
                     this.states[ moveInfo.movedPieceKey ].rank = moveInfo.postRank;
                 }
             } else if (moveInfo.isQueenSideCastling) {
-                //...
+                if (isWhiteMove) {
+                    this.states[ "wk" ].file = "c";
+                    this.states[ "wr1" ].file = "d";
+                    this.states[ "wk" ].rank = this.states[ "wr1" ].rank = 1;
+                } else {
+                    this.states[ "bk" ].file = "c";
+                    this.states[ "br1" ].file = "d";
+                    this.states[ "bk" ].rank = this.states[ "br1" ].rank = 8;
+                }
             } else if (moveInfo.isKingSideCastling) {
-                //...
+                if (isWhiteMove) {
+                    this.states[ "wk" ].file = "g";
+                    this.states[ "wr1" ].file = "h";
+                    this.states[ "wk" ].rank = this.states[ "wr1" ].rank = 1;
+                } else {
+                    this.states[ "bk" ].file = "g";
+                    this.states[ "br1" ].file = "h";
+                    this.states[ "bk" ].rank = this.states[ "br1" ].rank = 8;
+                }
             }
         }
     }
@@ -395,15 +439,17 @@ var PieceStateSet = (function () {
             }
             if (key.substring( 0, 2 ) == keyPrefix) {
                 // 指定fileの指定rankに移動可能か？
-                if (pieceType == "p" && this.isPawnMovableTo( postX, postY, prevX, prevY, searchOption ))
+                if (pieceType == "p" && this.isPawnMovableTo( isWhitePiece, postX, postY, prevX, prevY, searchOption ))
                     return key;
-                else if (pieceType == "n" && this.isKnightMovableTo( postX, postY, prevX, prevY ))
+                else if (pieceType == "n" && this.isKnightMovableTo( postX, postY, prevX, prevY, searchOption ))
                     return key;
                 else if (pieceType == "b" && this.isBishopMovableTo( postX, postY, prevX, prevY ))
                     return key;
-                else if (pieceType == "r" && this.isRookMovableTo( postX, postY, prevX, prevY ))
-                    return key;
-                else if (pieceType == "q" && this.isQueenMovableTo( postX, postY, prevX, prevY ))
+                else if (pieceType == "r" && this.isRookMovableTo( postX, postY, prevX, prevY, searchOption )) {
+                    // 移動経路に駒がないかの判定 (ルークが2つある場合)
+                    if (!this.isHitAnyPiece( key, postX, postY, prevX, prevY ))
+                        return key;
+                } else if (pieceType == "q" && this.isQueenMovableTo( postX, postY, prevX, prevY ))
                     return key;
                 else if (pieceType == "k" && this.isKingMovableTo( postX, postY, prevX, prevY ))
                     return key;
@@ -412,15 +458,18 @@ var PieceStateSet = (function () {
         return null;
     }
 
-    // TODO: 同一 file に2つ以上の駒がある場合
-    PieceStateSet.prototype.isPawnMovableTo = function ( postX, postY, prevX, prevY, searchOption ) {
+    PieceStateSet.prototype.isPawnMovableTo = function ( isWhitePiece, postX, postY, prevX, prevY, searchOption ) {
         if (searchOption != undefined) {
             if (searchOption.isKilling) {
                 // 駒取りを行った場合
-                var vectors = [
-                    new Vector( -1, 1 ), // y方向 → rank ではマイナス, インデックスではプラス
-                    new Vector( 1, 1 )
-                ];
+                var vectors =
+                    isWhitePiece ? [
+                        new Vector( -1, 1 ), // yマイナス方向 → rank ではマイナス, インデックスではプラス
+                        new Vector( 1, 1 )
+                    ] : [
+                        new Vector( -1, -1 ),
+                        new Vector( 1, -1 )
+                    ];
                 for (var i = 0; i < vectors.length; ++i) {
                     var v = vectors[ i ];
                     if (postX + v.x == prevX && postY + v.y == prevY)
@@ -428,14 +477,14 @@ var PieceStateSet = (function () {
                 }
             }
         } else {
+            // TODO: 同一 file に2つ以上の駒がある場合
             if (prevX == postX)
                 return true;
         }
         return false;
     }
 
-    // TODO: 指定 file, rank に到達可能な駒が2つある場合
-    PieceStateSet.prototype.isKnightMovableTo = function ( postX, postY, prevX, prevY ) {
+    PieceStateSet.prototype.isKnightMovableTo = function ( postX, postY, prevX, prevY, searchOption ) {
         var vectors = [
             new Vector( 2, 1 ),
             new Vector( 1, 2 ),
@@ -447,10 +496,21 @@ var PieceStateSet = (function () {
             new Vector( 1, -2 )
         ];
 
-        for (var i = 0; i < vectors.length; ++i) {
-            var v = vectors[ i ];
-            if (postX + v.x == prevX && postY + v.y == prevY)
-                return true;
+        if (searchOption != undefined && searchOption.fixedPrevFile != undefined) {
+            var fixedPrevX = this.positionUtil.toIndexFromFile( searchOption.fixedPrevFile );
+            for (var i = 0; i < vectors.length; ++i) {
+                var v = vectors[ i ];
+                if (fixedPrevX == prevX &&
+                    postX + v.x == prevX && postY + v.y == prevY) {
+                    return true;
+                }
+            }
+        } else {
+            for (var i = 0; i < vectors.length; ++i) {
+                var v = vectors[ i ];
+                if (postX + v.x == prevX && postY + v.y == prevY)
+                    return true;
+            }
         }
 
         return false;
@@ -476,7 +536,7 @@ var PieceStateSet = (function () {
         return false;
     }
 
-    PieceStateSet.prototype.isRookMovableTo = function ( postX, postY, prevX, prevY ) {
+    PieceStateSet.prototype.isRookMovableTo = function ( postX, postY, prevX, prevY, searchOption ) {
         var vectors = [
             new Vector( 1, 0 ), // 東
             new Vector( 0, 1 ), // 北
@@ -539,7 +599,30 @@ var PieceStateSet = (function () {
         return false;
     }
 
-    // TODO: 実装 (Rook, Queen, King など)
+    PieceStateSet.prototype.isHitAnyPiece = function ( selfKey, postX, postY, prevX, prevY ) {
+        var diff = new Vector( postX - prevX, postY - prevY );
+        var v = new Vector( diff.x == 0 ? 0 : diff.x / Math.abs( diff.x ), diff.y == 0 ? 0 : diff.y / Math.abs( diff.y ) );
+        var scanX = prevX + v.x;
+        var scanY = prevY + v.y;
+        while (scanX != postX || scanY != postY) {
+            for (var i = 0; i < this.keys.length; ++i) {
+                var key = this.keys[ i ];
+                if (key == selfKey)
+                    continue;
+                var state = this.states[ key ];
+                if (!state.alives)
+                    continue;
+                var x = this.positionUtil.toIndexFromFile( state.file );
+                var y = this.positionUtil.toIndexFromRank( state.rank );
+                if (scanX == x && scanY == y)
+                    return true;
+            }
+            scanX += v.x;
+            scanY += v.y;
+        }
+
+        return false;
+    }
 
     return PieceStateSet;
 })();
@@ -695,9 +778,10 @@ var Renderer = (function () {
 // SearchOption
 //=============================================================================================================
 var SearchOption = (function () {
-    function SearchOption( isNoMoving, isKilling ) {
+    function SearchOption( isNoMoving, isKilling, fixedPrevFile ) {
         this.isNoMoving = isNoMoving;
         this.isKilling = isKilling;
+        this.fixedPrevFile = fixedPrevFile;
     }
 
     return SearchOption;
