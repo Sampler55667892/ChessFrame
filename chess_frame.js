@@ -38,8 +38,7 @@ var ChessFrame = (function () {
 
         /*
         // デバッグ用
-        var count = 34;
-        //var count = 0;
+        var count = 30;
         for (var i = 0; i < count; ++i)
             this.goNext();
         */
@@ -114,7 +113,9 @@ var MoveInfo = (function () {
         this.killedPieceKey = "";
         this.postFile = "";
         this.postRank = 0;
-        this.isGameOver = false;
+        this.isResigned = false;
+        this.isDraw = false;
+        this.isCheckmate = false;
     }
 
     return MoveInfo;
@@ -139,6 +140,12 @@ var MoveParser = (function () {
         var indexQ = move.indexOf( "?" );
         if (indexQ != -1)
             move = move.substring( 0, indexQ );
+        // "チェックメイト" の除去
+        var indexCheckMate = move.indexOf( "#" );
+        if (indexCheckMate != -1) {
+            moveInfo.isCheckmate = true;
+            move = move.substring( 0, indexCheckMate );
+        }
 
         if (isFile( move[ 0 ] ))
             ParsePawn( pieceStates, move, isWhiteMove, moveInfo );
@@ -153,9 +160,9 @@ var MoveParser = (function () {
         else if (move[ 0 ] == "K")
             ParseKing( pieceStates, move, isWhiteMove, moveInfo );
         else if (move == "0-1" || move == "1-0")
-            moveInfo.isGameOver = true;
+            moveInfo.isResigned = true;
         else if (move == "1/2-1/2")
-            moveInfo.isGameOver = true;
+            moveInfo.isDraw = true;
         else if (move[ 0 ] == "0")
             ParseCastling( pieceStates, move, isWhiteMove, moveInfo );
 
@@ -378,8 +385,11 @@ var PieceStateSet = (function () {
         for (var i = 0; i < moves.length; ++i) {
             var isWhiteMove = i % 2 == 0;
             var moveInfo = this.moveParser.Parse( this, moves[ i ], isWhiteMove );
-            if (moveInfo.isGameOver) {
-                alert( "Game is over." );
+            if (moveInfo.isResigned) {
+                alert( (isWhiteMove ? "White" : "Black") + " is resigned." );
+                return;
+            } else if (moveInfo.isDraw) {
+                alert( "Draw." );
                 return;
             }
             if (!moveInfo.isQueenSideCastling && !moveInfo.isKingSideCastling) {
@@ -404,18 +414,23 @@ var PieceStateSet = (function () {
             } else if (moveInfo.isKingSideCastling) {
                 if (isWhiteMove) {
                     this.states[ "wk" ].file = "g";
-                    this.states[ "wr1" ].file = "h";
+                    this.states[ "wr2" ].file = "f";
                     this.states[ "wk" ].rank = this.states[ "wr1" ].rank = 1;
                 } else {
                     this.states[ "bk" ].file = "g";
-                    this.states[ "br1" ].file = "h";
+                    this.states[ "br2" ].file = "f";
                     this.states[ "bk" ].rank = this.states[ "br1" ].rank = 8;
                 }
+            }
+            // チェックメイトの場合は動かしてから
+            if (moveInfo.isCheckmate) {
+                alert( "Checkmate." );
+                return;
             }
         }
     }
 
-    // 検索 (複数ある駒用 (Pawn, Rook, Night, Bishop))
+    // 検索 (複数ある駒用 (Pawn, Rook, Knight, Bishop))
     PieceStateSet.prototype.findKey = function ( isWhitePiece, pieceType, file, rank, searchOption ) {
         var keyPrefix = (isWhitePiece ? "w" : "b") + pieceType;
         var postX = this.positionUtil.toIndexFromFile( file );
@@ -498,25 +513,19 @@ var PieceStateSet = (function () {
 
         if (searchOption != undefined && searchOption.fixedPrevFile != undefined) {
             var fixedPrevX = this.positionUtil.toIndexFromFile( searchOption.fixedPrevFile );
-            for (var i = 0; i < vectors.length; ++i) {
-                var v = vectors[ i ];
-                if (fixedPrevX == prevX &&
-                    postX + v.x == prevX && postY + v.y == prevY) {
-                    return true;
-                }
-            }
-        } else {
-            for (var i = 0; i < vectors.length; ++i) {
-                var v = vectors[ i ];
-                if (postX + v.x == prevX && postY + v.y == prevY)
-                    return true;
-            }
+            if (fixedPrevX != prevX)
+                return false;
+        }
+        for (var i = 0; i < vectors.length; ++i) {
+            var v = vectors[ i ];
+            if (postX + v.x == prevX && postY + v.y == prevY)
+                return true;
         }
 
         return false;
     }
 
-    // 各ビショップの移動範囲は重複しない
+    // (同じ色の) 各ビショップの移動範囲は重複しない
     PieceStateSet.prototype.isBishopMovableTo = function ( postX, postY, prevX, prevY ) {
         var vectors = [
             new Vector( 1, 1 ), // 北東
@@ -544,6 +553,11 @@ var PieceStateSet = (function () {
             new Vector( 0, -1 ) // 南
         ];
 
+        if (searchOption != undefined && searchOption.fixedPrevFile != undefined) {
+            var fixedPrevX = this.positionUtil.toIndexFromFile( searchOption.fixedPrevFile );
+            if (fixedPrevX != prevX)
+                return false;
+        }
         for (var i = 0; i < vectors.length; ++i) {
             var v = vectors[ i ];
             for (var j = 1; j <= 8; ++j) {

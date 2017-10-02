@@ -3,35 +3,15 @@
 <head>
     <meta charset="Shift_JIS">
     <link type="text/css" rel="stylesheet" href="bootstrap.min.css">
+    <script type="text/javascript" src="gameRecords.js"></script>
     <script type="text/javascript" src="../chess_frame.js"></script>
     <script type="text/javascript">
         var chessFrame;
 
         function onLoad() {
+            var gameRecords = new GameRecords();
             chessFrame = new ChessFrame();
-            chessFrame.initialize( [
-                "e4", "e5",
-                "Nf3", "Nc6",
-                "Bc4", "Nf6",
-                "Ng5", "d5",
-                "exd5", "Nxd5",
-                "Nxf7", "Kxf7",
-                "Qf3+", "Ke6",
-                "Nc3", "Nce7",
-                "d4", "c6",
-                "Bg5", "h6",
-                "Bxe7", "Bxe7",
-                "0-0-0", "Rf8",
-                "Qe4", "Rxf2?",
-                "dxe5", "Bg5+",
-                "Kb1", "Rd2",
-                "h4", "Rxd1+",
-                "Rxd1", "Bxh4",
-                "Nxd5", "cxd5",
-                "Rxd5", "Qg5",
-                "Rd6+", "Ke7",
-                "Rg6", "1-0"
-            ] );
+            chessFrame.initialize( gameRecords.get( 1 ) );
         }
     </script>
 </head>
@@ -50,7 +30,7 @@
                         <button id="prevButton" class="btn btn-default" onclick="chessFrame.goPrev();">Prev</button>
                         <button id="nextButton" class="btn btn-default" onclick="chessFrame.goNext();">Next</button><br>
                         <br>
-                        <textarea id="movesDisplay" style="width:120px; height:350px;" readonly></textarea>
+                        <textarea id="movesDisplay" style="width:150px; height:350px;" readonly></textarea>
                     </div>
                 </td>
             </tr>
