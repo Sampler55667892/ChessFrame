@@ -27,9 +27,14 @@
                 </td>
                 <td style="vertical-align:top;">
                     <div>
-                        <button id="prevButton" class="btn btn-default" onclick="chessFrame.goPrev();">Prev</button>
-                        <button id="nextButton" class="btn btn-default" onclick="chessFrame.goNext();">Next</button><br>
-                        <br>
+                        <button id="initButton" class="btn btn-default" onclick="chessFrame.reset();">&lt;&lt;</button>
+                        <button id="prevButton" class="btn btn-default" onclick="chessFrame.goPrev();">&lt;</button>
+                        <button id="nextButton" class="btn btn-default" onclick="chessFrame.goNext();">&gt;</button>
+                        <div class="checkbox">
+                            <label>
+                                <input id="blackViewCheck" type="checkbox" onchange="chessFrame.switchView();">black view</input>
+                            </label>
+                        </div>
                         <textarea id="movesDisplay" style="width:150px; height:350px;" readonly></textarea>
                     </div>
                 </td>

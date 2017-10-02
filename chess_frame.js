@@ -27,6 +27,7 @@ var ChessFrame = (function () {
         this.renderer = new Renderer( this.contexts );
         this.moves = [];
         this.countSteps = -1;
+        this.isWhiteView = true;
     }
 
     ChessFrame.prototype.initialize = function ( moves ) {
@@ -34,7 +35,7 @@ var ChessFrame = (function () {
         this.pieceStates.initialize();
         this.moves = moves;
         this.updateButtonStates();
-        this.renderer.render( this.pieceStates );
+        this.renderer.render( this.pieceStates, this.isWhiteView );
 
         /*
         // デバッグ用
@@ -49,7 +50,7 @@ var ChessFrame = (function () {
             return;
         --this.countSteps;
         this.update();
-        this.renderer.render( this.pieceStates );
+        this.renderer.render( this.pieceStates, this.isWhiteView );
     }
 
     ChessFrame.prototype.goNext = function () {
@@ -57,7 +58,20 @@ var ChessFrame = (function () {
             return;
         ++this.countSteps;
         this.update();
-        this.renderer.render( this.pieceStates );
+        this.renderer.render( this.pieceStates, this.isWhiteView );
+    }
+
+    ChessFrame.prototype.reset = function () {
+        this.countSteps = -1;
+        this.pieceStates.initialize();
+        this.updateButtonStates();
+        this.updateMovesDisplay();
+        this.renderer.render( this.pieceStates, this.isWhiteView );
+    }
+
+    ChessFrame.prototype.switchView = function () {
+        this.isWhiteView = !document.getElementById( "blackViewCheck" ).checked;
+        this.renderer.render( this.pieceStates, this.isWhiteView );
     }
 
     ChessFrame.prototype.update = function () {
@@ -87,6 +101,7 @@ var ChessFrame = (function () {
     }
 
     ChessFrame.prototype.updateButtonStates = function () {
+        document.getElementById( "initButton" ).disabled = this.countSteps <= -1;
         document.getElementById( "prevButton" ).disabled = this.countSteps <= -1;
         document.getElementById( "nextButton" ).disabled = this.moves.length - 1 <= this.countSteps;
     }
@@ -215,7 +230,6 @@ var MoveParser = (function () {
         ParseBase( pieceStates, move, isWhiteMove, moveInfo, "b" );
     }
 
-    // TODO: 指定位置に移動可能なルークが2つある場合
     function ParseRook( pieceStates, move, isWhiteMove, moveInfo ) {
         moveInfo.isRookMove = true;
         ParseBase( pieceStates, move, isWhiteMove, moveInfo, "r" );
@@ -678,31 +692,31 @@ var Renderer = (function () {
     }
 
     // 描画更新
-    Renderer.prototype.render = function ( pieceStates ) {
+    Renderer.prototype.render = function ( pieceStates, isWhiteView ) {
         this.contexts.back.clearRect( 0, 0, this.contexts.back.canvas.width, this.contexts.back.canvas.height );
 
         // レンダリング結果 (画像は非同期にレンダリング) をフロントバッファに送るためのタイミングの構成用
         window.sessionStorage.setItem( "countImages", "0" );
 
-        this.renderCore( this.contexts, pieceStates );
+        this.renderCore( this.contexts, pieceStates, isWhiteView );
     }
 
-    Renderer.prototype.renderCore = function ( contexts, pieceStates ) {
-        this.drawPieces( contexts, pieceStates, this.offsetDrawing );
+    Renderer.prototype.renderCore = function ( contexts, pieceStates, isWhiteView ) {
+        this.drawPieces( contexts, pieceStates, this.offsetDrawing, isWhiteView );
         this.drawChessBoard( contexts.back, this.offsetDrawing );
-        this.drawPositionalNotations( contexts.back, new Size( 0, 0 ) );
+        this.drawPositionalNotations( contexts.back, new Size( 0, 0 ), isWhiteView );
     }
 
-    Renderer.prototype.drawPieces = function ( contexts, pieceStates, offset ) {
+    Renderer.prototype.drawPieces = function ( contexts, pieceStates, offset, isWhiteView ) {
         for (var i = 0; i < pieceStates.keys.length; ++i) {
             var key = pieceStates.keys[ i ];
             var state = pieceStates.states[ key ];
             // html 直下に figures フォルダを配置する
-            this.drawImage( contexts, pieceStates.keys.length, "figures/" + key.substring( 0, 2 ) + ".png", state, offset );
+            this.drawImage( contexts, pieceStates.keys.length, "figures/" + key.substring( 0, 2 ) + ".png", state, offset, isWhiteView );
         }
     }
 
-    Renderer.prototype.drawImage = function ( contexts, pieceKeysLength, sourcePath, state, offset ) {
+    Renderer.prototype.drawImage = function ( contexts, pieceKeysLength, sourcePath, state, offset, isWhiteView ) {
         var size = this.pieceSize;
         var x = this.positionUtil.toIndexFromFile( state.file );
         var y = this.positionUtil.toIndexFromRank( state.rank );
@@ -712,8 +726,12 @@ var Renderer = (function () {
         image.src = sourcePath;
         image.onload = function () {
             // 画像は非同期にレンダリング
-            if (alives)
-                contexts.back.drawImage( image, offset.width + x * size.width, offset.height + y * size.height );
+            if (alives) {
+                if (isWhiteView)
+                    contexts.back.drawImage( image, offset.width + x * size.width, offset.height + y * size.height );
+                else
+                    contexts.back.drawImage( image, offset.width + (7 - x) * size.width, offset.height + (7 - y) * size.height );
+            }
 
             var countImages = Number( window.sessionStorage.getItem( "countImages" ) );
             window.sessionStorage.setItem( "countImages", countImages + 1 );
@@ -726,7 +744,7 @@ var Renderer = (function () {
         }
     }
 
-    Renderer.prototype.drawPositionalNotations = function ( context, offset ) {
+    Renderer.prototype.drawPositionalNotations = function ( context, offset, isWhiteView ) {
         var fileMargin = new Size( 18, 30 );
         var rankMargin = new Size( 20, 30 );
 
@@ -736,14 +754,24 @@ var Renderer = (function () {
         // File
         var files = this.positionUtil.getFiles();
         for (var j = 0; j < files.length; ++j) {
-            context.fillText( files[ j ], offset.width + fileMargin.width + (j + 1) * this.pieceSize.width, offset.height + fileMargin.height );
-            context.fillText( files[ j ], offset.width + fileMargin.width + (j + 1) * this.pieceSize.width, offset.height + (this.boardSize.height + this.pieceSize.height - 5) + fileMargin.height );
+            if (isWhiteView) {
+                context.fillText( files[ j ], offset.width + fileMargin.width + (j + 1) * this.pieceSize.width, offset.height + fileMargin.height );
+                context.fillText( files[ j ], offset.width + fileMargin.width + (j + 1) * this.pieceSize.width, offset.height + (this.boardSize.height + this.pieceSize.height - 5) + fileMargin.height );
+            } else {
+                context.fillText( files[ j ], offset.width + fileMargin.width + (7 - j + 1) * this.pieceSize.width, offset.height + fileMargin.height );
+                context.fillText( files[ j ], offset.width + fileMargin.width + (7 - j + 1) * this.pieceSize.width, offset.height + (this.boardSize.height + this.pieceSize.height - 5) + fileMargin.height );
+            }
         }
 
         // Rank
         for (var i = 1; i <= 8; ++i) {
-            context.fillText( i.toString(), offset.width + rankMargin.width, offset.height + rankMargin.height + (8 - i + 1) * this.pieceSize.height );
-            context.fillText( i.toString(), offset.width + (this.boardSize.width + this.pieceSize.width - 5) + rankMargin.width, offset.height + rankMargin.height + (8 - i + 1) * this.pieceSize.height );
+            if (isWhiteView) {
+                context.fillText( i.toString(), offset.width + rankMargin.width, offset.height + rankMargin.height + (8 - i + 1) * this.pieceSize.height );
+                context.fillText( i.toString(), offset.width + (this.boardSize.width + this.pieceSize.width - 5) + rankMargin.width, offset.height + rankMargin.height + (8 - i + 1) * this.pieceSize.height );
+            } else {
+                context.fillText( i.toString(), offset.width + rankMargin.width, offset.height + rankMargin.height + i * this.pieceSize.height );
+                context.fillText( i.toString(), offset.width + (this.boardSize.width + this.pieceSize.width - 5) + rankMargin.width, offset.height + rankMargin.height + i * this.pieceSize.height );
+            }
         }
     }
 
