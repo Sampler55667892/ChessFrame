@@ -495,9 +495,11 @@ var PieceStateSet = (function () {
             }
             if (key.substring( 0, 2 ) == keyPrefix) {
                 // 指定fileの指定rankに移動可能か？
-                if (pieceType == "p" && this.isPawnMovableTo( isWhitePiece, postX, postY, prevX, prevY, searchOption ))
-                    return key;
-                else if (pieceType == "n" && this.isKnightMovableTo( postX, postY, prevX, prevY, searchOption ))
+                if (pieceType == "p" && this.isPawnMovableTo( isWhitePiece, postX, postY, prevX, prevY, searchOption )) {
+                    // 移動経路に駒がないかの判定 (ポーンが同じファイルに2つある場合)
+                    if (!this.isHitAnyPiece( key, postX, postY, prevX, prevY ))
+                        return key;
+                } else if (pieceType == "n" && this.isKnightMovableTo( postX, postY, prevX, prevY, searchOption ))
                     return key;
                 else if (pieceType == "b" && this.isBishopMovableTo( postX, postY, prevX, prevY ))
                     return key;
@@ -540,7 +542,7 @@ var PieceStateSet = (function () {
                 }
             }
         } else {
-            // TODO: 同一 file に2つ以上の駒がある場合
+            // 同一 file に2つ以上の駒がある場合 → ルークの判定と同様に移動経路チェックを呼出し元で行う
             if (prevX == postX)
                 return true;
         }
