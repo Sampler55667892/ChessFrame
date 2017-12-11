@@ -126,6 +126,7 @@ var MoveInfo = (function () {
         this.existsKilledPiece = false;
         this.movedPieceKey = "";
         this.killedPieceKey = "";
+        this.prevFile = "";
         this.postFile = "";
         this.postRank = 0;
         this.isResigned = false;
@@ -195,7 +196,7 @@ var MoveParser = (function () {
             // どのポーンの移動かを特定
             moveInfo.postFile = move[ 0 ];
             moveInfo.postRank = move[ 1 ];
-            moveInfo.movedPieceKey = pieceStates.findKey( isWhiteMove, "p", moveInfo.postFile, moveInfo.postRank );
+            moveInfo.movedPieceKey = pieceStates.findKey( isWhiteMove, "p", moveInfo.postFile, moveInfo.postRank, "" );
         } else if (move.length == 4) {
             // 駒取りありのポーンの移動
             if (move[ 1 ] != "x") {
@@ -211,12 +212,14 @@ var MoveParser = (function () {
                 return;
             }
             moveInfo.existsKilledPiece = true;
+            // 1つの駒を取れるポーンが2つある可能性がある
+            moveInfo.prevFile = move[ 0 ];
             moveInfo.postFile = move[ 2 ];
             moveInfo.postRank = move[ 3 ];
             var op1 = new SearchOption( false, true );
-            moveInfo.movedPieceKey = pieceStates.findKey( isWhiteMove, "p", moveInfo.postFile, moveInfo.postRank, op1 );
+            moveInfo.movedPieceKey = pieceStates.findKey( isWhiteMove, "p", moveInfo.postFile, moveInfo.postRank, moveInfo.prevFile, op1 );
             var op2 = new SearchOption( true, false );
-            moveInfo.killedPieceKey = pieceStates.findKey( !isWhiteMove, "*", moveInfo.postFile, moveInfo.postRank, op2 );
+            moveInfo.killedPieceKey = pieceStates.findKey( !isWhiteMove, "*", moveInfo.postFile, moveInfo.postRank, "", op2 );
         }
     }
 
@@ -265,7 +268,7 @@ var MoveParser = (function () {
             }
             moveInfo.postFile = move[ 1 ];
             moveInfo.postRank = move[ 2 ];
-            moveInfo.movedPieceKey = pieceStates.findKey( isWhiteMove, pieceType, moveInfo.postFile, moveInfo.postRank );
+            moveInfo.movedPieceKey = pieceStates.findKey( isWhiteMove, pieceType, moveInfo.postFile, moveInfo.postRank, "" );
         } else if (move.length == 4) {
             if (move[ 1 ] == "x") {
                 // 駒取りありの駒の移動
@@ -281,9 +284,9 @@ var MoveParser = (function () {
                 moveInfo.postFile = move[ 2 ];
                 moveInfo.postRank = move[ 3 ];
                 var op1 = new SearchOption( false, true );
-                moveInfo.movedPieceKey = pieceStates.findKey( isWhiteMove, pieceType, moveInfo.postFile, moveInfo.postRank, op1 );
+                moveInfo.movedPieceKey = pieceStates.findKey( isWhiteMove, pieceType, moveInfo.postFile, moveInfo.postRank, "",  op1 );
                 var op2 = new SearchOption( true, false );
-                moveInfo.killedPieceKey = pieceStates.findKey( !isWhiteMove, "*", moveInfo.postFile, moveInfo.postRank, op2 );
+                moveInfo.killedPieceKey = pieceStates.findKey( !isWhiteMove, "*", moveInfo.postFile, moveInfo.postRank, "", op2 );
             } else {
                 // 同じ場所に移動できる駒が2つある場合 (ナイト or ルーク)
                 if (!isFile( move[ 1 ] )) {
@@ -301,7 +304,7 @@ var MoveParser = (function () {
                 var op = new SearchOption( false, false, move[ 1 ] );
                 moveInfo.postFile = move[ 2 ];
                 moveInfo.postRank = move[ 3 ];
-                moveInfo.movedPieceKey = pieceStates.findKey( isWhiteMove, pieceType, moveInfo.postFile, moveInfo.postRank, op );
+                moveInfo.movedPieceKey = pieceStates.findKey( isWhiteMove, pieceType, moveInfo.postFile, moveInfo.postRank, "", op );
             }
         }
     }
@@ -445,10 +448,11 @@ var PieceStateSet = (function () {
     }
 
     // 検索 (複数ある駒用 (Pawn, Rook, Knight, Bishop))
-    PieceStateSet.prototype.findKey = function ( isWhitePiece, pieceType, file, rank, searchOption ) {
+    PieceStateSet.prototype.findKey = function ( isWhitePiece, pieceType, postFile, postRank, prevFile, searchOption ) {
         var keyPrefix = (isWhitePiece ? "w" : "b") + pieceType;
-        var postX = this.positionUtil.toIndexFromFile( file );
-        var postY = this.positionUtil.toIndexFromRank( rank );
+        var postX = this.positionUtil.toIndexFromFile( postFile );
+        var postY = this.positionUtil.toIndexFromRank( postRank );
+        var fixedPrevX = prevFile != "" ? this.positionUtil.toIndexFromFile( prevFile ) : "";
 
         for (var i = 0; i < this.keys.length; ++i) {
             var key = this.keys[ i ];
@@ -468,9 +472,16 @@ var PieceStateSet = (function () {
             }
             if (key.substring( 0, 2 ) == keyPrefix) {
                 // 指定fileの指定rankに移動可能か？
-                if (pieceType == "p" && this.isPawnMovableTo( isWhitePiece, postX, postY, prevX, prevY, searchOption ))
-                    return key;
-                else if (pieceType == "n" && this.isKnightMovableTo( postX, postY, prevX, prevY, searchOption ))
+                if (pieceType == "p" && this.isPawnMovableTo( isWhitePiece, postX, postY, prevX, prevY, searchOption )) {
+                    // 移動可能なポーンが2つある可能性あり
+                    if (fixedPrevX != "") {
+                        if (fixedPrevX == prevX) {
+                            return key;
+                        }
+                    } else {
+                        return key;
+                    }
+                } else if (pieceType == "n" && this.isKnightMovableTo( postX, postY, prevX, prevY, searchOption ))
                     return key;
                 else if (pieceType == "b" && this.isBishopMovableTo( postX, postY, prevX, prevY ))
                     return key;

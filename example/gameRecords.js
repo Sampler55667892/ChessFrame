@@ -3,14 +3,71 @@ var GameRecords = (function () {
     }
 
     GameRecords.prototype.get = function ( index ) {
-        if (index == 0)
-            return getExample0();
-        else if (index == 1)
-            return getExample1();
+        if (index == 1)
+            return getExample_1();
+        else if (index == 2)
+            return getExample_2();
+        else if (index == 101)
+            return getExample_101();
         return null;
     }
 
-    function getExample0() {
+    // ブルール vs フィリドール
+    function getExample_2() {
+        return [
+            "e4", "e5",
+            "Bc4", "c6",
+            "Qe2", "d6",
+            "c3", "f5",
+            "d3", "Nf6",
+            "exf5", "Bxf5",
+            "d4", "e4",
+            "Bg5", "d5",
+            "Bb3", "Bd6",
+            "Nd2", "Nbd7",
+            "h3", "h6",
+            "Be3", "Qe7",
+            "f4", "h5",
+            "c4", "a6",
+            "cxd5", "cxd5",
+            "Qf2", "0-0",
+            "Ne2", "b5",
+            "0-0", "Nb6",
+            "Ng3", "g6",
+            "Rac1", "Nc4",
+            "Nxf5", "gxf5",
+            "Qg3+", "Qg7",
+            "Qxg7+", "Kxg7",
+            "Bxc4", "bxc4",
+            "g3", "Rab8",
+            "b3", "Ba3",
+            "Rc2", "cxb3",
+            "axb3", "Rbc8",
+            "Rxc8", "Rxc8",
+            "Ra1", "Bb4",
+            "Rxa6", "Rc3",
+            "Kf2", "Rd3",
+            "Ra2", "Bxd2",
+            "Rxd2", "Rxb3",
+            "Rc2", "h4",
+            "Rc7+", "Kg6",
+            "gxh4", "Nh5",
+            "Rd7", "Nxf4",
+            "Bxf4", "Rf3+",
+            "Kg2", "Rxf4",
+            "Rxd5", "Rf3",
+            "Rd8", "Rd3",
+            "d5", "f4",
+            "d6", "Rd2+",
+            "Kf1", "Kf7",
+            "h5", "e3",
+            "h6", "f3",
+            "0-1",
+        ];
+    }
+
+    // ポレリオ vs ドメニコ
+    function getExample_1() {
         return [
             "e4", "e5",
             "Nf3", "Nc6",
@@ -37,7 +94,7 @@ var GameRecords = (function () {
     }
 
     // The game of the century
-    function getExample1() {
+    function getExample_101() {
         return [
             "Nf3", "Nf6",
             "c4", "g6",
